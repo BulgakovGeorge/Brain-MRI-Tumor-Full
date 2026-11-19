@@ -1,0 +1,17 @@
+# Core
+streamlit>=1.28
+streamlit-drawable-canvas==0.10.0
+numpy
+opencv-python-headless
+Pillow
+python-docx
+
+# Deep learning
+torch
+torchvision
+timm
+segmentation-models-pytorch
+grad-cam
+
+# Optional (если вдруг понадобится)
+# gdown
