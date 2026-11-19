@@ -194,7 +194,17 @@ def make_docx_bytes(report_text, overlay_rgb, title="Проект заключе
     return buf.getvalue()
 
 
-def save_case(root, case, mask, overlay_rgb, report_text, doctor, log, generated_text):
+def save_case(
+    root,
+    case,
+    mask,
+    overlay_rgb,
+    report_text,
+    doctor,
+    log,
+    generated_text,
+    docx_bytes=None
+):
     d = Path(root) / f"{datetime.datetime.now():%Y%m%d_%H%M%S}_{case['id']}"
     d.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(d / "image_norm.png"), case["img"])
@@ -203,7 +213,11 @@ def save_case(root, case, mask, overlay_rgb, report_text, doctor, log, generated
     cv2.imwrite(str(d / "overlay_final.png"), cv2.cvtColor(overlay_rgb, cv2.COLOR_RGB2BGR))
     (d / "report_final.txt").write_text(report_text, encoding="utf-8")
     (d / "report_ai_draft.txt").write_text(generated_text or "", encoding="utf-8")
-    (d / "report_final.docx").write_bytes(make_docx_bytes(report_text, overlay_rgb))
+
+    if docx_bytes is None:
+        docx_bytes = make_docx_bytes(report_text, overlay_rgb)
+    (d / "report_final.docx").write_bytes(docx_bytes)
+    
     meta = dict(case_id=case["id"], source_name=case["name"], doctor=doctor,
                 saved_at=datetime.datetime.now().isoformat(timespec="seconds"),
                 ai_stats=mask_stats(case["ai_mask"], case.get("box")), final_stats=mask_stats(mask, case.get("box")),

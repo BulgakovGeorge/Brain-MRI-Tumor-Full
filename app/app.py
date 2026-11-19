@@ -6,6 +6,7 @@ import cv2
 from PIL import Image
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
+from report_docx import create_report_docx_bytes
 
 # ---------- пути ----------
 _ROOT = Path(__file__).resolve().parent.parent
@@ -56,8 +57,8 @@ def new_case(arr, name):
         _proc, cam, label, text = gradio_app.analyze_image(P, arr)
         r = SP.predict(arr)
 
-    st.write("DEBUG label:", label)
-    st.write("DEBUG text:", text)
+    #st.write("DEBUG label:", label)
+    #st.write("DEBUG text:", text)
 
     label = {str(k): float(v) for k, v in dict(label).items()}
     box, box_ok = head_box(r["image"])
@@ -200,10 +201,45 @@ with right:
     r1, r2 = st.columns(2)
     r1.button("Составить заново по текущей маске", on_click=regenerate,
               help="Перезапишет текст, ваши правки в нём будут потеряны")
+
     final_overlay = render(case, "final")
-    r2.download_button("Скачать DOCX", make_docx_bytes(S.report_text, final_overlay), file_name=f"zakl_{case['id']}.docx",
-                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+    # Статистика первоначальной маски ИИ
+    ai_stt = mask_stats(case["ai_mask"], case["box"])
+
+    # Формирование расширенного Word-отчёта
+    docx_bytes = create_report_docx_bytes(
+        report_text=S.report_text,
+        overlay_rgb=final_overlay,
+        image_name=case["name"],
+        case_id=case["id"],
+        doctor=doctor,
+        probabilities=case["label"],
+        final_stats=stt,
+        ai_stats=ai_stt,
+        head_box_ok=case["box_ok"],
+        report_stale=case["gen_hash"] != mask_hash(case["mask"]),
+        classifier_note=case["cls_text"],
+    )
+
+    r2.download_button(
+        "Скачать DOCX",
+        docx_bytes,
+        file_name=f"zakl_{case['id']}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    
     if st.button("Сохранить случай (маски, текст, журнал)", type="primary"):
         log("Случай сохранён", doctor=doctor)
-        d = save_case(CASES_DIR, case, case["mask"], final_overlay, S.report_text, doctor, case["log"], case["generated"])
+        d = save_case(
+        CASES_DIR,
+        case,
+        case["mask"],
+        final_overlay,
+        S.report_text,
+        doctor,
+        case["log"],
+        case["generated"],
+        docx_bytes=docx_bytes
+    )
         st.success(f"Сохранено: {d}")
